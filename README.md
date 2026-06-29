@@ -1,83 +1,66 @@
-# 📱 InstaTrack Analytics
+# 📱 InstaTrack Desktop Analytics
 
-O **InstaTrack** é um dashboard moderno e elegante, em modo escuro definitivo, desenvolvido para monitoramento e análise de engajamento de perfis do Instagram. Ele foi projetado para uso pessoal e serve como um centro analítico para acompanhar o desempenho de posts, crescimento de audiência e simular interações.
+O **InstaTrack** é um aplicativo desktop moderno e elegante (desenvolvido com **Electron** e **React 19**), em modo escuro definitivo, projetado para monitoramento e análise de engajamento de perfis do Instagram. Ele funciona como uma central analítica completa que gerencia perfis reais ou simulados, salva dados no cache local e monitora o desempenho de posts, crescimento de audiência e simulações.
 
-Esta versão é uma demonstração interativa de alta fidelidade que roda sobre dados simulados dinamicamente no frontend.
+Esta versão é um **aplicativo desktop totalmente funcional** que roda de forma nativa e permite a integração direta com APIs de scraping reais (como RapidAPI) para buscar dados atualizados de seguidores e posts de qualquer conta pública do Instagram.
 
 ---
 
 ## 🎨 Principais Funcionalidades
 
+*   **Aplicativo Desktop Nativo**: Executado diretamente na bandeja do sistema (System Tray). Ao fechar a janela, o app continua rodando em segundo plano para acesso rápido.
+*   **Integração Real com API (RapidAPI & Meta)**: Aba de configurações dedicada para inserção de chaves de API, permitindo puxar dados de seguidores, bios e posts de qualquer conta pública diretamente da rede social.
+*   **Sincronização de Perfis em 1 Clique**: Atualize métricas de crescimento e novos posts instantaneamente através do botão de sincronização dedicado.
+*   **Cache Local Persistente (`localStorage`)**: Todas as chaves de API, perfis adicionados, dados do simulador e configurações do painel são salvos localmente e permanecem salvos entre as sessões.
 *   **Seletor de Perfis estilo "Stories"**: Alterna instantaneamente entre perfis ativos com avatares circulares e anéis em gradiente colorido característicos do Instagram.
-*   **Gerador de Perfis Dinâmicos**: Permite adicionar qualquer usuário do Instagram no painel e gera dados estatísticos, posts, históricos e comportamentos realistas na hora.
-*   **Cards de KPIs em Tempo Real**: Métricas consolidadas como número total de Seguidores, Taxa de Engajamento geral (ER%), Média de Curtidas e Média de Comentários por post.
+*   **Simulador de ER (Engagement Rate)**: Calculadora inteligente onde você arrasta sliders de seguidores, likes e comentários para prever a nota de engajamento do seu próximo post.
 *   **Gráficos Nativos Responsivos (SVG)**:
     *   *Crescimento de Seguidores*: Gráfico de área suavizada com preenchimento em degradê.
-    *   *Variação Semanal de Engajamento*: Histórico da flutuação da taxa de engajamento do perfil.
-    *   *Melhores Horários (Heatmap)*: Tabela de calor que cruza dias da semana com faixas horárias para prever picos de atividade dos seguidores.
-*   **Grade de Posts Analítica**:
-    *   Exibição dos posts com overlay escuro revelando likes e comentários ao passar o mouse.
-    *   Filtros rápidos de formato (Todos, Fotos, Carrossel, Reels).
-    *   Ordenação por engajamento, curtidas, comentários ou ordem cronológica.
-    *   **Inspetor de Post**: Janela modal detalhada que analisa a performance daquele post específico em relação à média geral do canal.
-*   **Simulador de ER**: Calculadora inteligente onde você arrasta sliders de seguidores, likes e comentários para prever a nota de engajamento do seu próximo post.
-*   **Comparativo de Perfis (Benchmarking)**: Ferramenta que compara as estatísticas de dois perfis conectados lado a lado em barras de progresso comparativas.
+    *   *Variação Semanal de Engajamento*: Histórico de oscilação do engajamento.
+    *   *Melhores Horários (Heatmap)*: Grade de atividade para identificar picos de engajamento por hora/dia.
+*   **Grade de Posts Analítica**: Filtros rápidos de formato (Reels, Fotos, Carrossel) e ordenação por popularidade, exibindo overlay com curtidas e comentários no hover.
+*   **Comparativo de Perfis (Benchmarking)**: Ferramenta de comparação de estatísticas entre dois perfis conectados lado a lado.
 
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
-*   **Vite**: Ferramenta de build extremamente rápida.
+*   **Electron**: Framework para desenvolvimento de aplicações desktop cross-platform.
 *   **React 19 & TypeScript**: Programação declarativa e tipagem estática robusta.
-*   **Tailwind CSS v4**: Novo motor CSS mais veloz, com variáveis nativas e importação direta.
+*   **Vite**: Ferramenta de build extremamente rápida com configuração base de caminhos relativos.
+*   **Tailwind CSS v4**: Novo motor CSS mais veloz, com variáveis nativas.
 *   **HeroUI v3**: Biblioteca de UI moderna e clean (anteriormente NextUI).
 *   **Lucide React**: Biblioteca de ícones vetoriais leves e consistentes.
 
 ---
 
-## 🚀 Como Executar o Projeto
+## 🚀 Como Executar o App
 
-Certifique-se de ter o [Node.js](https://nodejs.org/) instalado.
+Certifique-se de ter o [Node.js](https://nodejs.org/) instalado no seu sistema.
 
-1.  **Clonar ou Entrar na pasta do repositório**:
-    ```bash
-    cd --dashboard-gustavo
-    ```
+### 1. Instalar as dependências
+```bash
+npm install
+```
 
-2.  **Instalar as dependências**:
-    ```bash
-    npm install
-    ```
+### 2. Rodar em Modo de Desenvolvimento (Vite + Electron)
+Inicia o painel local e abre a janela nativa do Electron simultaneamente:
+```bash
+npm run electron:dev
+```
 
-3.  **Rodar em modo de desenvolvimento**:
-    ```bash
-    npm run dev -- --port 3000
-    ```
-
-4.  **Acessar no Navegador**:
-    Abra [http://localhost:3000/](http://localhost:3000/)
-
-5.  **Gerar pacote de produção**:
-    ```bash
-    npm run build
-    ```
+### 3. Compilar e Empacotar o Aplicativo Desktop (.AppImage / .deb)
+Gera instaladores otimizados prontos para distribuição na pasta `/dist-electron`:
+```bash
+npm run electron:build
+```
 
 ---
 
-## ⚙️ Como funciona a Integração com Perfis Reais?
+## ⚙️ Configurando a Sincronização de Dados Reais
 
-Atualmente, o projeto utiliza uma estrutura modular de dados mockados em `src/config/mockData.ts`. Para conectar o dashboard a perfis reais do Instagram, o fluxo recomendado é:
-
-1.  **API Graph Oficial (Meta)**:
-    *   A Meta disponibiliza a **Instagram Graph API** para perfis Profissionais (Criadores ou Empresas).
-    *   Exige login OAuth 2.0 (via Facebook Login) para obter um token de acesso de longa duração.
-    *   Fornece dados reais como `/media` (posts, curtidas, comentários) e `/insights` (alcance, impressões, público).
-
-2.  **Serviço de Scraping (Para Concorrentes)**:
-    *   Como a API oficial só retorna dados de perfis que você é dono/administrador, a análise de concorrentes exige o uso de serviços de raspagem de dados (Web Scraping) via APIs no RapidAPI ou plataformas como Apify para ler o HTML público do Instagram de forma automatizada.
-
-3.  **Backend & Banco de Dados**:
-    *   Um servidor Node.js/Express intermediário deve gerenciar as chaves de API com segurança e evitar erros de segurança CORS no navegador.
-    *   Um banco de dados (ex: MongoDB/Postgres) é necessário para salvar a quantidade diária de seguidores de cada perfil, já que o Instagram não fornece histórico retroativo de crescimento.
-
-*Para ler um guia completo de arquitetura sobre dados reais, consulte o arquivo local `instagram_api_guide.md` gerado no workspace.*
+Para buscar informações reais do Instagram:
+1. Abra o aplicativo e clique na aba **Configurações**.
+2. Cole a sua **RapidAPI Key** (de APIs como `instagram-scraper-api2` ou similar).
+3. Ative a chave no toggle **"Ativar Consultas Reais"**.
+4. Ao adicionar um novo perfil ou clicar no ícone de atualizar (Sync) em um perfil existente, o aplicativo fará uma requisição HTTP real para importar o número exato de seguidores, posts recentes, curtidas, comentários e foto de perfil.

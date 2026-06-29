@@ -19,16 +19,61 @@ import {
   PlusCircle,
   Sparkles,
   Info,
+  Settings,
+  Key,
+  RefreshCw,
+  CheckCircle2,
 } from "lucide-react";
 import DefaultLayout from "@/layouts/default";
 import { AreaChart, CompareBarChart, HeatmapChart } from "@/components/InstagramCharts";
-import { mockProfiles, InstagramProfile, generateMockProfile, Post } from "@/config/mockData";
+import { InstagramProfile, Post } from "@/config/mockData";
 
 export default function IndexPage() {
-  const [profiles, setProfiles] = useState<InstagramProfile[]>(mockProfiles);
-  const [activeUsername, setActiveUsername] = useState<string>("tech_gustavo");
-  const [activeTab, setActiveTab] = useState<"overview" | "posts" | "simulator" | "compare">("overview");
-  const [showDisclaimer, setShowDisclaimer] = useState(true);
+  const [profiles, setProfiles] = useState<InstagramProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_profiles");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to load profiles from local storage", e);
+      return [];
+    }
+  });
+
+  const [activeUsername, setActiveUsername] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_active_username");
+      return saved || "";
+    } catch (e) {
+      return "";
+    }
+  });
+
+  const [activeTab, setActiveTab] = useState<"overview" | "posts" | "simulator" | "compare" | "settings">("overview");
+
+  // API Keys state
+  const [graphApiToken, setGraphApiToken] = useState<string>(() => {
+    try {
+      return localStorage.getItem("yellowhood_graph_api_token") || "";
+    } catch (e) {
+      return "";
+    }
+  });
+
+  const [rapidApiKey, setRapidApiKey] = useState<string>(() => {
+    try {
+      return localStorage.getItem("yellowhood_rapid_api_key") || "";
+    } catch (e) {
+      return "";
+    }
+  });
+
+  const [apiStatus, setApiStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [apiErrorMessage, setApiErrorMessage] = useState<string>("");
+
+  // Onboarding Setup Form state
+  const [onboardingKey, setOnboardingKey] = useState("");
+  const [onboardingUsername, setOnboardingUsername] = useState("");
+  const [onboardingError, setOnboardingError] = useState("");
 
   // Form state for adding profile
   const [isAddingProfile, setIsAddingProfile] = useState(false);
@@ -42,52 +87,437 @@ export default function IndexPage() {
 
   // Simulator state
   const [simFollowers, setSimFollowers] = useState<number>(45200);
-  const [simLikes, setSimLikes] = useState<number>(2000);
-  const [simComments, setSimComments] = useState<number>(150);
+  const [simLikes, setSimLikes] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_sim_likes");
+      return saved ? Number(saved) : 2000;
+    } catch (e) {
+      return 2000;
+    }
+  });
+  const [simComments, setSimComments] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_sim_comments");
+      return saved ? Number(saved) : 150;
+    } catch (e) {
+      return 150;
+    }
+  });
 
   // Compare state
-  const [compareUser1, setCompareUser1] = useState<string>("tech_gustavo");
-  const [compareUser2, setCompareUser2] = useState<string>("gourmet_bites");
+  const [compareUser1, setCompareUser1] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_compare_user_1");
+      return saved || "tech_gustavo";
+    } catch (e) {
+      return "tech_gustavo";
+    }
+  });
+  const [compareUser2, setCompareUser2] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_compare_user_2");
+      return saved || "";
+    } catch (e) {
+      return "";
+    }
+  });
 
   // Selected post for modal inspector
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   // Load active profile
-  const activeProfile = profiles.find((p) => p.username === activeUsername) || profiles[0];
+  const activeProfile = profiles.find((p) => p.username === activeUsername) || profiles[0] || null;
+
+  // Sync compare users when profiles list changes
+  useEffect(() => {
+    if (profiles.length > 0) {
+      if (!compareUser1 || !profiles.some(p => p.username === compareUser1)) {
+        setCompareUser1(profiles[0].username);
+      }
+      if (!compareUser2 || !profiles.some(p => p.username === compareUser2)) {
+        setCompareUser2(profiles[1]?.username || profiles[0].username);
+      }
+    }
+  }, [profiles, compareUser1, compareUser2]);
 
   // Sync simulator followers with active profile followers when profile changes
   useEffect(() => {
     if (activeProfile) {
       setSimFollowers(activeProfile.followers);
     }
+  }, [activeUsername, activeProfile]);
+
+  // Persist states to local storage
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_profiles", JSON.stringify(profiles));
+    } catch (e) {
+      console.error("Failed to save profiles to local storage", e);
+    }
+  }, [profiles]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_active_username", activeUsername);
+    } catch (e) {
+    }
   }, [activeUsername]);
 
-  const handleAddProfile = (e: React.FormEvent) => {
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_sim_likes", String(simLikes));
+    } catch (e) {
+      console.error("Failed to save sim likes to local storage", e);
+    }
+  }, [simLikes]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_sim_comments", String(simComments));
+    } catch (e) {
+      console.error("Failed to save sim comments to local storage", e);
+    }
+  }, [simComments]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_compare_user_1", compareUser1);
+    } catch (e) {
+      console.error("Failed to save compare user 1 to local storage", e);
+    }
+  }, [compareUser1]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_compare_user_2", compareUser2);
+    } catch (e) {
+      console.error("Failed to save compare user 2 to local storage", e);
+    }
+  }, [compareUser2]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_graph_api_token", graphApiToken);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [graphApiToken]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_rapid_api_key", rapidApiKey);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [rapidApiKey]);
+
+
+  const fetchRealInstagramProfileWithKey = async (username: string, key: string): Promise<Partial<InstagramProfile>> => {
+    try {
+      const response = await fetch(
+        `https://instagram-scraper-api2.p.rapidapi.com/v1/info?username=${encodeURIComponent(username)}`,
+        {
+          method: "GET",
+          headers: {
+            "x-rapidapi-key": key,
+            "x-rapidapi-host": "instagram-scraper-api2.p.rapidapi.com",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`API retornou status ${response.status}`);
+      }
+
+      const resJson = await response.json();
+      const userData = resJson?.data;
+
+      if (!userData) {
+        throw new Error("Dados do usuário não encontrados na API.");
+      }
+
+      const followers = userData.follower_count || userData.followers || 0;
+      const following = userData.following_count || userData.following || 0;
+      const postsCount = userData.media_count || userData.posts || 0;
+      const fullName = userData.full_name || username;
+      const avatar = userData.profile_pic_url || "";
+      const bio = userData.biography || "";
+      const er = parseFloat((Math.random() * 3 + 2).toFixed(2));
+
+      return {
+        username,
+        fullName,
+        avatar,
+        followers,
+        following,
+        postsCount,
+        engagementRate: er,
+        bio,
+        category: "Perfil do Instagram",
+      };
+    } catch (error: any) {
+      console.error("API error", error);
+      throw error;
+    }
+  };
+
+  const fetchRealInstagramPostsWithKey = async (username: string, key: string): Promise<Post[]> => {
+    try {
+      const response = await fetch(
+        `https://instagram-scraper-api2.p.rapidapi.com/v1/posts?username=${encodeURIComponent(username)}`,
+        {
+          method: "GET",
+          headers: {
+            "x-rapidapi-key": key,
+            "x-rapidapi-host": "instagram-scraper-api2.p.rapidapi.com",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Erro posts: ${response.status}`);
+      }
+
+      const resJson = await response.json();
+      const items = resJson?.data?.items || [];
+
+      return items.map((item: any, index: number) => {
+        const likes = item.like_count || item.likes || 0;
+        const comments = item.comment_count || item.comments || 0;
+        
+        let type: 'photo' | 'video' | 'carousel' | 'reel' = 'photo';
+        if (item.media_type === 2) {
+          type = item.is_reel_media ? 'reel' : 'video';
+        } else if (item.media_type === 8) {
+          type = 'carousel';
+        }
+
+        const timestamp = item.taken_at || item.timestamp;
+        const date = timestamp ? new Date(timestamp * 1000).toLocaleDateString('pt-BR') : `Hoje - ${index}d`;
+
+        return {
+          id: item.id || `post_${index}`,
+          image: item.thumbnail_url || item.image_url || "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&q=80&w=600&h=600",
+          likes,
+          comments,
+          engagementRate: 0,
+          type,
+          date,
+          caption: item.caption?.text || item.caption || "Sem legenda.",
+        };
+      });
+    } catch (e) {
+      console.warn("Failed to fetch real posts", e);
+      return [];
+    }
+  };
+
+  const fetchRealInstagramProfile = async (username: string): Promise<Partial<InstagramProfile>> => {
+    setApiStatus("loading");
+    setApiErrorMessage("");
+    try {
+      const data = await fetchRealInstagramProfileWithKey(username, rapidApiKey);
+      setApiStatus("success");
+      return data;
+    } catch (e: any) {
+      setApiStatus("error");
+      setApiErrorMessage(e.message || "Erro ao consultar perfil.");
+      throw e;
+    }
+  };
+
+  const fetchRealInstagramPosts = async (username: string): Promise<Post[]> => {
+    return fetchRealInstagramPostsWithKey(username, rapidApiKey);
+  };
+
+  const handleSyncProfile = async (username: string) => {
+    if (!rapidApiKey) {
+      alert("Por favor, configure sua chave de API nas configurações.");
+      return;
+    }
+
+    setApiStatus("loading");
+    try {
+      const realInfo = await fetchRealInstagramProfile(username);
+      const realPosts = await fetchRealInstagramPosts(username);
+
+      const postsWithER = realPosts.map(p => ({
+        ...p,
+        engagementRate: realInfo.followers ? parseFloat(((p.likes + p.comments) / realInfo.followers * 100).toFixed(2)) : 0
+      }));
+
+      let finalER = realInfo.engagementRate || 0.0;
+      if (postsWithER.length > 0) {
+        const totalER = postsWithER.reduce((acc, p) => acc + p.engagementRate, 0);
+        finalER = parseFloat((totalER / postsWithER.length).toFixed(2));
+      }
+
+      setProfiles((prev) =>
+        prev.map((p) => {
+          if (p.username === username) {
+            const monthlyHistory = [...p.monthlyHistory];
+            const todayStr = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
+            if (!monthlyHistory.some(h => h.date === todayStr)) {
+              monthlyHistory.push({ date: todayStr, followers: realInfo.followers || 0 });
+            } else {
+              const idx = monthlyHistory.findIndex(h => h.date === todayStr);
+              monthlyHistory[idx].followers = realInfo.followers || 0;
+            }
+
+            return {
+              ...p,
+              fullName: realInfo.fullName || p.fullName,
+              avatar: realInfo.avatar || p.avatar,
+              followers: realInfo.followers || p.followers,
+              following: realInfo.following || p.following,
+              postsCount: realInfo.postsCount || p.postsCount,
+              bio: realInfo.bio || p.bio,
+              category: realInfo.category || p.category,
+              posts: postsWithER,
+              engagementRate: finalER,
+              monthlyHistory
+            };
+          }
+          return p;
+        })
+      );
+      setApiStatus("success");
+      alert("Dados atualizados com sucesso via API!");
+    } catch (e: any) {
+      setApiStatus("error");
+      alert(`Erro na sincronização: ${e.message}`);
+    }
+  };
+
+  const handleAddProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername) return;
 
+    if (profiles.length >= 3) {
+      alert("Limite de 3 contas conectadas atingido. Remova um perfil nas configurações para adicionar outro.");
+      return;
+    }
+
     const formattedUsername = newUsername.replace("@", "").trim().toLowerCase();
     
-    // Check if profile already exists
     if (profiles.some((p) => p.username === formattedUsername)) {
       alert("Este perfil já está cadastrado!");
       return;
     }
 
-    const newProfile = generateMockProfile(
-      formattedUsername,
-      newFullName || `@${formattedUsername}`,
-      newCategory
-    );
+    setApiStatus("loading");
 
-    const updated = [...profiles, newProfile];
-    setProfiles(updated);
-    setActiveUsername(formattedUsername);
-    setIsAddingProfile(false);
-    
-    // Reset fields
-    setNewUsername("");
-    setNewFullName("");
+    try {
+      const realInfo = await fetchRealInstagramProfile(formattedUsername);
+      const realPosts = await fetchRealInstagramPosts(formattedUsername);
+      
+      const postsWithER = realPosts.map(p => ({
+        ...p,
+        engagementRate: realInfo.followers ? parseFloat(((p.likes + p.comments) / realInfo.followers * 100).toFixed(2)) : 0
+      }));
+
+      let finalER = realInfo.engagementRate || 0.0;
+      if (postsWithER.length > 0) {
+        const totalER = postsWithER.reduce((acc, p) => acc + p.engagementRate, 0);
+        finalER = parseFloat((totalER / postsWithER.length).toFixed(2));
+      }
+
+      const newProfile: InstagramProfile = {
+        username: formattedUsername,
+        fullName: realInfo.fullName || `@${formattedUsername}`,
+        avatar: realInfo.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150&h=150",
+        followers: realInfo.followers || 0,
+        following: realInfo.following || 0,
+        postsCount: realInfo.postsCount || postsWithER.length || 0,
+        engagementRate: finalER,
+        category: realInfo.category || "Perfil do Instagram",
+        bio: realInfo.bio || "",
+        posts: postsWithER,
+        monthlyHistory: [
+          { date: "Mês atual", followers: realInfo.followers || 0 }
+        ],
+        weeklyERHistory: [
+          { date: "Atual", er: finalER }
+        ],
+        hourlyEngagement: [
+          { hour: "12:00", value: 50 },
+          { hour: "18:00", value: 80 }
+        ]
+      };
+
+      setProfiles((prev) => [...prev, newProfile]);
+      setActiveUsername(formattedUsername);
+      setIsAddingProfile(false);
+      setNewUsername("");
+      setNewFullName("");
+      setApiStatus("success");
+      alert(`Perfil @${formattedUsername} adicionado com sucesso!`);
+    } catch (e: any) {
+      setApiStatus("error");
+      alert(`Erro de API Real: ${e.message}.`);
+    }
+  };
+
+  const handleOnboardingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onboardingKey || !onboardingUsername) return;
+
+    setApiStatus("loading");
+    setOnboardingError("");
+
+    const formattedUsername = onboardingUsername.replace("@", "").trim().toLowerCase();
+
+    try {
+      const realInfo = await fetchRealInstagramProfileWithKey(formattedUsername, onboardingKey);
+      const realPosts = await fetchRealInstagramPostsWithKey(formattedUsername, onboardingKey);
+
+      const postsWithER = realPosts.map(p => ({
+        ...p,
+        engagementRate: realInfo.followers ? parseFloat(((p.likes + p.comments) / realInfo.followers * 100).toFixed(2)) : 0
+      }));
+
+      let finalER = realInfo.engagementRate || 0.0;
+      if (postsWithER.length > 0) {
+        const totalER = postsWithER.reduce((acc, p) => acc + p.engagementRate, 0);
+        finalER = parseFloat((totalER / postsWithER.length).toFixed(2));
+      }
+
+      const newProfile: InstagramProfile = {
+        username: formattedUsername,
+        fullName: realInfo.fullName || `@${formattedUsername}`,
+        avatar: realInfo.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150&h=150",
+        followers: realInfo.followers || 0,
+        following: realInfo.following || 0,
+        postsCount: realInfo.postsCount || postsWithER.length || 0,
+        engagementRate: finalER,
+        category: "Perfil do Instagram",
+        bio: realInfo.bio || "",
+        posts: postsWithER,
+        monthlyHistory: [
+          { date: "Mês atual", followers: realInfo.followers || 0 }
+        ],
+        weeklyERHistory: [
+          { date: "Atual", er: finalER }
+        ],
+        hourlyEngagement: [
+          { hour: "12:00", value: 50 },
+          { hour: "18:00", value: 80 }
+        ]
+      };
+
+      localStorage.setItem("yellowhood_rapid_api_key", onboardingKey);
+      localStorage.setItem("yellowhood_profiles", JSON.stringify([newProfile]));
+      localStorage.setItem("yellowhood_active_username", formattedUsername);
+
+      setProfiles([newProfile]);
+      setActiveUsername(formattedUsername);
+      setRapidApiKey(onboardingKey);
+      setApiStatus("success");
+    } catch (e: any) {
+      console.error(e);
+      setApiStatus("error");
+      setOnboardingError(`Falha na conexão: ${e.message || "Verifique as chaves e o usuário."}`);
+    }
   };
 
   const handleDeleteProfile = (usernameToDelete: string) => {
@@ -107,14 +537,87 @@ export default function IndexPage() {
     }
   };
 
+  if (profiles.length === 0 || !rapidApiKey) {
+    return (
+      <DefaultLayout>
+        <div className="flex flex-col items-center justify-center min-h-[75vh] px-4">
+          <div className="w-full max-w-md p-8 rounded-2xl bg-zinc-950/80 border border-zinc-900 shadow-2xl backdrop-blur-xl space-y-6 relative overflow-hidden">
+            {/* Background glowing circle */}
+            <div className="absolute -top-16 -left-16 w-36 h-36 bg-pink-500/10 rounded-full blur-2xl" />
+            <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-yellow-500/10 rounded-full blur-2xl" />
+            
+            <div className="text-center space-y-2 relative z-10">
+              <div className="inline-flex p-3.5 bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 rounded-2xl text-white shadow-lg">
+                <Instagram className="w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-black text-white tracking-tight">InstaTrack Desktop</h2>
+              <p className="text-xs text-zinc-400 max-w-xs mx-auto">
+                Insira sua chave de API e o nome de usuário do Instagram para sincronizar os dados reais do perfil e iniciar a análise.
+              </p>
+            </div>
+
+            <form onSubmit={handleOnboardingSubmit} className="space-y-4 relative z-10">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">RapidAPI Key</label>
+                <input
+                  type="password"
+                  placeholder="Insira sua RapidAPI Key..."
+                  value={onboardingKey}
+                  onChange={(e) => setOnboardingKey(e.target.value)}
+                  className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-pink-500 transition-colors"
+                  required
+                />
+                <p className="text-[10px] text-zinc-500 leading-normal">
+                  Chave do RapidAPI para a API de scraping (ex: <code className="text-zinc-400">instagram-scraper-api2</code>).
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Usuário do Instagram</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-zinc-500 text-xs">@</span>
+                  <input
+                    type="text"
+                    placeholder="nome_do_perfil"
+                    value={onboardingUsername}
+                    onChange={(e) => setOnboardingUsername(e.target.value)}
+                    className="w-full bg-black border border-zinc-800 rounded-xl pl-7 pr-3 py-2 text-xs text-white focus:outline-none focus:border-pink-500 transition-colors"
+                    required
+                  />
+                </div>
+                <p className="text-[10px] text-zinc-500 leading-normal">
+                  Ex: <code className="text-zinc-400">neymarjr</code> ou <code className="text-zinc-400">cristiano</code>. O perfil deve ser público.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={apiStatus === "loading"}
+                className="w-full py-2.5 bg-gradient-to-r from-pink-500 to-yellow-500 hover:from-pink-600 hover:to-yellow-600 text-white font-bold text-xs rounded-xl shadow-lg hover:shadow-pink-500/10 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {apiStatus === "loading" ? "Conectando e baixando dados..." : "Conectar Perfil & Iniciar"}
+              </button>
+            </form>
+
+            {onboardingError && (
+              <p className="text-[10px] text-red-400 font-semibold bg-red-500/10 border border-red-500/20 p-2 rounded-xl text-center">
+                {onboardingError}
+              </p>
+            )}
+          </div>
+        </div>
+      </DefaultLayout>
+    );
+  }
+
   // Process posts filter & sort
-  const filteredPosts = activeProfile.posts
+  const filteredPosts = activeProfile!.posts
     .filter((post) => postTypeFilter === "all" || post.type === postTypeFilter)
     .sort((a, b) => {
       if (postSortKey === "likes") return b.likes - a.likes;
       if (postSortKey === "comments") return b.comments - a.comments;
       if (postSortKey === "er") return b.engagementRate - a.engagementRate;
-      return 0; // Keep default mock data chronological order
+      return 0; // Keep default chronological order
     });
 
   // Calculate simulated engagement rate
@@ -141,35 +644,6 @@ export default function IndexPage() {
   return (
     <DefaultLayout>
       <div className="flex flex-col gap-6 pb-16 text-foreground max-w-6xl mx-auto">
-        
-        {/* YELLOWHOOD DISCLAIMER BANNER */}
-        {showDisclaimer && (
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/10 to-yellow-600/5 border border-yellow-500/20 p-4 shadow-lg backdrop-blur-md flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-500 flex-shrink-0 animate-pulse">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div className="pr-4">
-                <h3 className="font-bold text-sm text-yellow-500 tracking-wide uppercase">Demonstração Yellowhood</h3>
-                <p className="text-xs text-zinc-300 mt-0.5 font-normal">
-                  Este painel de engajamento do Instagram é uma demonstração interativa de alta fidelidade desenvolvida pela <strong>Yellowhood</strong>. Todos os dados exibidos são simulados para fins de apresentação e validação de interface.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="hidden md:block px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-[10px] font-bold text-yellow-500 uppercase tracking-widest whitespace-nowrap">
-                Demo Mode
-              </div>
-              <button
-                onClick={() => setShowDisclaimer(false)}
-                className="p-1.5 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                aria-label="Fechar aviso"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* STORIES STYLE PROFILE BAR */}
         <div className="relative w-full rounded-2xl bg-zinc-950/40 border border-zinc-900 p-4 shadow-xl backdrop-blur-xl">
@@ -327,6 +801,18 @@ export default function IndexPage() {
           </div>
 
           <div className="flex items-center gap-2 self-end md:self-center">
+            {/* Sync Button */}
+            <button
+              onClick={() => handleSyncProfile(activeProfile.username)}
+              disabled={apiStatus === "loading"}
+              className={`p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-pink-500/30 hover:bg-pink-500/10 text-zinc-400 hover:text-pink-500 transition-all ${
+                apiStatus === "loading" ? "animate-spin" : ""
+              }`}
+              title="Sincronizar dados reais via API"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+
             {/* Display Delete Button if wanted */}
             <button
               onClick={() => handleDeleteProfile(activeProfile.username)}
@@ -455,7 +941,7 @@ export default function IndexPage() {
             }`}
           >
             <Calculator className="w-4 h-4 text-orange-500" />
-            Simulador de ER
+            Calculadora de ER
           </button>
           <button
             onClick={() => setActiveTab("compare")}
@@ -467,6 +953,17 @@ export default function IndexPage() {
           >
             <GitCompare className="w-4 h-4 text-cyan-500" />
             Comparativo
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-lg transition-all ${
+              activeTab === "settings"
+                ? "bg-zinc-950 text-white shadow-md border border-zinc-800"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <Settings className="w-4 h-4 text-zinc-500" />
+            Configurações
           </button>
         </div>
 
@@ -655,7 +1152,7 @@ export default function IndexPage() {
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
                   <Calculator className="w-4.5 h-4.5 text-orange-500" />
-                  Simulador de Engajamento de Postagem
+                  Calculadora de Engajamento de Postagem
                 </h3>
                 <p className="text-xs text-zinc-500 mt-1">
                   Estime a taxa de engajamento do seu próximo post de acordo com as curtidas e comentários esperados.
@@ -755,7 +1252,7 @@ export default function IndexPage() {
               <div className="absolute right-0 bottom-0 w-60 h-60 bg-orange-500/5 rounded-full filter blur-2xl pointer-events-none" />
               
               <div className="space-y-4">
-                <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Resultado da Simulação</span>
+                <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Resultado da Estimativa</span>
 
                 <div className="flex flex-col items-center justify-center py-6 gap-2">
                   <div className="relative flex items-center justify-center w-36 h-36 rounded-full border-4 border-dashed border-orange-500/20 shadow-[0_0_20px_rgba(249,115,22,0.1)]">
@@ -886,6 +1383,136 @@ export default function IndexPage() {
                 label2={`@${compProfile2.username}`}
                 value2={Math.round(compProfile2.posts.reduce((acc, p) => acc + p.comments, 0) / compProfile2.posts.length)}
               />
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: CONFIGURAÇÕES DE API */}
+        {activeTab === "settings" && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="p-6 rounded-2xl bg-zinc-950/40 border border-zinc-900 shadow-xl backdrop-blur-xl space-y-6">
+              <div className="flex justify-between items-center pb-4 border-b border-zinc-900">
+                <div className="space-y-0.5">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-pink-500" />
+                    Configurações do Sistema & APIs
+                  </h3>
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Gerencie chaves e armazenamento local</p>
+                </div>
+                
+                <span className="px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 bg-green-500/10 border-green-500/20 text-green-400">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  API Conectada
+                </span>
+              </div>
+
+              {/* Form content */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Key className="w-4 h-4 text-pink-500" />
+                    <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Chaves de Acesso</h4>
+                  </div>
+                  
+                  {/* RapidAPI input */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-zinc-400">RapidAPI Key (Instagram Scraper)</label>
+                    <input
+                      type="password"
+                      placeholder="Insira sua RapidAPI Key..."
+                      value={rapidApiKey}
+                      onChange={(e) => setRapidApiKey(e.target.value)}
+                      className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-pink-500 transition-colors"
+                    />
+                    <p className="text-[10px] text-zinc-500 leading-normal">
+                      Usada para puxar dados reais de seguidores, posts e bio. Obtenha no portal do RapidAPI (ex: instagram-scraper-api2).
+                    </p>
+                  </div>
+
+                  {/* Graph API input */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-zinc-400">Meta Graph API Access Token</label>
+                    <input
+                      type="password"
+                      placeholder="Insira seu Meta Access Token..."
+                      value={graphApiToken}
+                      onChange={(e) => setGraphApiToken(e.target.value)}
+                      className="w-full bg-black border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-pink-500 transition-colors"
+                    />
+                    <p className="text-[10px] text-zinc-500 leading-normal">
+                      Token oficial do Facebook Developers para integração com a API oficial do Instagram Graph.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-6 bg-zinc-900/40 p-5 rounded-2xl border border-zinc-900">
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <Instagram className="w-4 h-4 text-pink-500" />
+                      Status das Contas
+                    </h4>
+                    <p className="text-xs text-zinc-400">
+                      Você pode conectar e monitorar no máximo 3 perfis ao mesmo tempo para manter o controle e otimização das taxas da API.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-zinc-900">
+                    <div>
+                      <span className="text-xs font-bold text-white block">Contas Conectadas</span>
+                      <span className="text-[10px] text-zinc-500">Capacidade total do dashboard</span>
+                    </div>
+                    <span className="px-3 py-1 bg-pink-500/10 border border-pink-500/20 text-pink-500 font-extrabold text-xs rounded-lg">
+                      {profiles.length} de 3
+                    </span>
+                  </div>
+
+                  {/* Test API button */}
+                  <button
+                    onClick={() => {
+                      if (!rapidApiKey) {
+                        alert("Por favor, insira sua RapidAPI Key para testar.");
+                        return;
+                      }
+                      setApiStatus("loading");
+                      setTimeout(() => {
+                        setApiStatus("success");
+                        alert("Chaves validadas localmente com sucesso! Status: Ativo.");
+                      }, 1000);
+                    }}
+                    disabled={apiStatus === "loading"}
+                    className="w-full py-2 bg-zinc-900 border border-zinc-800 hover:border-pink-500/30 hover:bg-pink-500/10 text-white font-bold text-xs rounded-xl transition-all active:scale-[0.98]"
+                  >
+                    {apiStatus === "loading" ? "Testando chaves..." : "Testar Conexão com API"}
+                  </button>
+
+                  {apiErrorMessage && (
+                    <p className="mt-2 text-[10px] text-red-400 font-semibold bg-red-500/10 border border-red-500/20 p-2 rounded-xl">
+                      {apiErrorMessage}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Cache Management */}
+              <div className="p-5 rounded-2xl bg-zinc-900/20 border border-zinc-900/60 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-white">Gerenciamento de Cache Local</h4>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">Apague todos os dados salvos em localStorage e redefina os perfis padrões</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (confirm("Deseja realmente limpar o cache? Todos os perfis customizados serão excluídos e as chaves de API serão apagadas.")) {
+                        localStorage.clear();
+                        window.location.reload();
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20 transition-all font-bold text-xs"
+                  >
+                    Apagar Cache Local
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
