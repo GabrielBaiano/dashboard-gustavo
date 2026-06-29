@@ -25,10 +25,32 @@ import { AreaChart, CompareBarChart, HeatmapChart } from "@/components/Instagram
 import { mockProfiles, InstagramProfile, generateMockProfile, Post } from "@/config/mockData";
 
 export default function IndexPage() {
-  const [profiles, setProfiles] = useState<InstagramProfile[]>(mockProfiles);
-  const [activeUsername, setActiveUsername] = useState<string>("tech_gustavo");
+  const [profiles, setProfiles] = useState<InstagramProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_profiles");
+      return saved ? JSON.parse(saved) : mockProfiles;
+    } catch (e) {
+      console.error("Failed to load profiles from local storage", e);
+      return mockProfiles;
+    }
+  });
+  const [activeUsername, setActiveUsername] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_active_username");
+      return saved || "tech_gustavo";
+    } catch (e) {
+      return "tech_gustavo";
+    }
+  });
   const [activeTab, setActiveTab] = useState<"overview" | "posts" | "simulator" | "compare">("overview");
-  const [showDisclaimer, setShowDisclaimer] = useState(true);
+  const [showDisclaimer, setShowDisclaimer] = useState(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_show_disclaimer");
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch (e) {
+      return true;
+    }
+  });
 
   // Form state for adding profile
   const [isAddingProfile, setIsAddingProfile] = useState(false);
@@ -42,12 +64,40 @@ export default function IndexPage() {
 
   // Simulator state
   const [simFollowers, setSimFollowers] = useState<number>(45200);
-  const [simLikes, setSimLikes] = useState<number>(2000);
-  const [simComments, setSimComments] = useState<number>(150);
+  const [simLikes, setSimLikes] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_sim_likes");
+      return saved ? Number(saved) : 2000;
+    } catch (e) {
+      return 2000;
+    }
+  });
+  const [simComments, setSimComments] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_sim_comments");
+      return saved ? Number(saved) : 150;
+    } catch (e) {
+      return 150;
+    }
+  });
 
   // Compare state
-  const [compareUser1, setCompareUser1] = useState<string>("tech_gustavo");
-  const [compareUser2, setCompareUser2] = useState<string>("gourmet_bites");
+  const [compareUser1, setCompareUser1] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_compare_user_1");
+      return saved || "tech_gustavo";
+    } catch (e) {
+      return "tech_gustavo";
+    }
+  });
+  const [compareUser2, setCompareUser2] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("yellowhood_compare_user_2");
+      return saved || "gourmet_bites";
+    } catch (e) {
+      return "gourmet_bites";
+    }
+  });
 
   // Selected post for modal inspector
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -60,7 +110,64 @@ export default function IndexPage() {
     if (activeProfile) {
       setSimFollowers(activeProfile.followers);
     }
+  }, [activeUsername, activeProfile]);
+
+  // Persist states to local storage
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_profiles", JSON.stringify(profiles));
+    } catch (e) {
+      console.error("Failed to save profiles to local storage", e);
+    }
+  }, [profiles]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_active_username", activeUsername);
+    } catch (e) {
+      console.error("Failed to save active username to local storage", e);
+    }
   }, [activeUsername]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_show_disclaimer", JSON.stringify(showDisclaimer));
+    } catch (e) {
+      console.error("Failed to save disclaimer state to local storage", e);
+    }
+  }, [showDisclaimer]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_sim_likes", String(simLikes));
+    } catch (e) {
+      console.error("Failed to save sim likes to local storage", e);
+    }
+  }, [simLikes]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_sim_comments", String(simComments));
+    } catch (e) {
+      console.error("Failed to save sim comments to local storage", e);
+    }
+  }, [simComments]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_compare_user_1", compareUser1);
+    } catch (e) {
+      console.error("Failed to save compare user 1 to local storage", e);
+    }
+  }, [compareUser1]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("yellowhood_compare_user_2", compareUser2);
+    } catch (e) {
+      console.error("Failed to save compare user 2 to local storage", e);
+    }
+  }, [compareUser2]);
 
   const handleAddProfile = (e: React.FormEvent) => {
     e.preventDefault();
