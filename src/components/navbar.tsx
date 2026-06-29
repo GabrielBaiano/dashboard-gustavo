@@ -22,8 +22,8 @@ export const Navbar = () => {
 
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-400">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Demonstração Ativa
+            <span className="w-2 h-2 rounded-full bg-pink-500 animate-pulse" />
+            Nativo Desktop
           </div>
         </div>
       </header>
